@@ -12,19 +12,11 @@ data class Address(val value: Int) {
     val lsb: Address
         get() = Address(value and 0xFF)
 
-    fun plus(other: Int): Address {
-        return Address((this.value + other) and 0xFFFF)
-    }
+    fun plus(other: Int) = Address((this.value + other) and 0xFFFF)
 
-    fun plus(other: Address): Address {
-        return Address((this.value + other.value) and 0xFFFF)
-    }
+    fun plus(other: Address) = Address((this.value + other.value) and 0xFFFF)
 
-    fun minus(other: Int): Address {
-        return Address((this.value - other) and 0xFFFF)
-    }
+    fun minus(other: Int) = Address((this.value - other) and 0xFFFF)
 
-    fun minus(other: Address): Address {
-        return Address((this.value - other.value) and 0xFFFF)
-    }
+    fun minus(other: Address) = Address((this.value - other.value) and 0xFFFF)
 }

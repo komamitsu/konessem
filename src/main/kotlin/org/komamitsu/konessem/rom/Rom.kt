@@ -1,13 +1,14 @@
 package org.komamitsu.konessem.rom
 
+import org.komamitsu.konessem.Address
 import org.komamitsu.konessem.toUint
 
 class PrgRom(private val bytes: ByteArray) {
     val size: Int
         get() = bytes.size
 
-    fun read(addr: Int): Int {
-        return bytes[addr].toUint()
+    fun read(addr: Address): Int {
+        return bytes[addr.value].toUint()
     }
 }
 

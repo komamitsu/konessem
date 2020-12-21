@@ -1,6 +1,7 @@
 package org.komamitsu.konessem.ppu
 
 import javafx.scene.image.Image
+import org.komamitsu.konessem.Address
 
 internal data class Sprite(
     val id: Int,
@@ -10,7 +11,7 @@ internal data class Sprite(
     val prioritizedBg: Boolean,
     val paletteId: Int,
     val heightOfSprite: Int,
-    val addrOfPatternTable: Int
+    val addrOfPatternTable: Address
 ) {
     companion object {
         fun get(register: Register, image: Image, spriteRam: SpriteRam, index: Int): Sprite? {

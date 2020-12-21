@@ -1,5 +1,7 @@
 package org.komamitsu.konessem.cpu
 
+import org.komamitsu.konessem.Address
+
 class Stack(
     private val cpuBus: CpuBus,
     private val register: Register
@@ -7,7 +9,7 @@ class Stack(
     private val baseAddr = 0x0100
 
     internal fun push(value: Byte) {
-        val addr = register.sp + baseAddr
+        val addr = Address(register.sp + baseAddr)
         cpuBus.write(addr, value)
         register.sp--
     }
@@ -20,7 +22,7 @@ class Stack(
 
     internal fun pop(): Int {
         ++register.sp
-        val addr = register.sp + baseAddr
+        val addr = Address(register.sp + baseAddr)
         val value = cpuBus.read(addr)
         return value
     }

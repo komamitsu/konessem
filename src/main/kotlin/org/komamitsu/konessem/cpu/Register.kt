@@ -1,5 +1,7 @@
 package org.komamitsu.konessem.cpu
 
+import org.komamitsu.konessem.Address
+
 class Register {
     var sp: Int = 0
         set(value) {
@@ -12,6 +14,8 @@ class Register {
         }
 
     var pc: Int = 0
+
+    fun pcAsAddress(): Address = Address(pc)
 
     var a: Int = 0
         set(value) {

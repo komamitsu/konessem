@@ -1,5 +1,6 @@
 package org.komamitsu.konessem.cpu
 
+import org.komamitsu.konessem.Address
 import org.komamitsu.konessem.Interrupt
 import org.komamitsu.konessem.toUint
 import java.lang.RuntimeException
@@ -12,7 +13,7 @@ class Cpu(
     internal val stack = Stack(cpuBus = cpuBus, register = register)
 
     fun reset() {
-        register.pc = cpuBus.readWord(0xFFFC)
+        register.pc = cpuBus.readWord(Address(0xFFFC))
         register.sp = 0xFF
         register.statusInterruptDisabled = true
         register.statusDecimalMode = false
@@ -25,22 +26,26 @@ class Cpu(
         stack.push((pc and 0xFF).toByte())
         stack.push(register.sp.toByte())
         register.statusInterruptDisabled = true
-        val addr = cpuBus.readWord(0xFFFA)
+        val addr = cpuBus.readWord(Address(0xFFFA))
         register.pc = addr
     }
 
     fun fetch(): Int {
-        val byte = cpuBus.read(register.pc)
+        val byte = cpuBus.read(register.pcAsAddress())
         register.pc++
         return byte
     }
 
     fun fetchWord(): Int {
-        val word = cpuBus.readWord(register.pc)
+        val word = cpuBus.readWord(register.pcAsAddress())
         register.pc++
         register.pc++
         return word
     }
+
+    fun fetchAsAddress() = Address(fetch())
+
+    fun fetchWordAsAddress() = Address(fetchWord())
 
     private fun fetchOperand(addressingMode: AddressingMode): Operand {
         return when (addressingMode) {
@@ -54,26 +59,26 @@ class Cpu(
                     valueFunction = { value }
                 )
             }
-            AddressingMode.ZERO_PAGE -> fetch().let { addr ->
-                val calculatedAddr = addr and 0xFF
+            AddressingMode.ZERO_PAGE -> fetchAsAddress().let { addr ->
+                val calculatedAddr = addr.lsb
                 Operand(
-                    raw = addr,
+                    raw = addr.value,
                     addrFunction = { calculatedAddr },
                     valueFunction = { read(calculatedAddr) }
                 )
             }
-            AddressingMode.ZERO_PAGE_X -> fetch().let { addr ->
-                val calculatedAddr = (addr + register.x) and 0xFF
+            AddressingMode.ZERO_PAGE_X -> fetchAsAddress().let { addr ->
+                val calculatedAddr = addr.plus(register.x).lsb
                 Operand(
-                    raw = addr,
+                    raw = addr.value,
                     addrFunction = { calculatedAddr },
                     valueFunction = { read(calculatedAddr) }
                 )
             }
-            AddressingMode.ZERO_PAGE_Y -> fetch().let { addr ->
-                val calculatedAddr = (addr + register.y) and 0xFF
+            AddressingMode.ZERO_PAGE_Y -> fetchAsAddress().let { addr ->
+                val calculatedAddr = addr.plus(register.y).lsb
                 Operand(
-                    raw = addr,
+                    raw = addr.value,
                     addrFunction = { calculatedAddr },
                     valueFunction = { read(calculatedAddr) }
                 )
@@ -85,50 +90,53 @@ class Cpu(
                     valueFunction = { x }
                 )
             }
-            AddressingMode.ABSOLUTE -> fetchWord().let { addr ->
+            AddressingMode.ABSOLUTE -> fetchWordAsAddress().let { addr ->
                 Operand(
-                    raw = addr,
+                    raw = addr.value,
                     addrFunction = { addr },
                     valueFunction = { read(addr) }
                 )
             }
-            AddressingMode.ABSOLUTE_X -> fetchWord().let { addr ->
-                val calculatedAddr = (addr + register.x) and 0xFFFF
+            AddressingMode.ABSOLUTE_X -> fetchWordAsAddress().let { addr ->
+                val calculatedAddr = addr.plus(register.x)
                 Operand(
-                    raw = addr,
+                    raw = addr.value,
                     addrFunction = { calculatedAddr },
                     valueFunction = { read(calculatedAddr) }
                 )
             }
-            AddressingMode.ABSOLUTE_Y -> fetchWord().let { addr ->
-                val calculatedAddr = (addr + register.y) and 0xFFFF
+            AddressingMode.ABSOLUTE_Y -> fetchWordAsAddress().let { addr ->
+                val calculatedAddr = addr.plus(register.y)
                 Operand(
-                    raw = addr,
+                    raw = addr.value,
                     addrFunction = { calculatedAddr },
                     valueFunction = { read(calculatedAddr) }
                 )
             }
-            AddressingMode.INDIRECT -> fetchWord().let { addr ->
+            AddressingMode.INDIRECT -> fetchWordAsAddress().let { addr ->
                 // https://everything2.com/title/6502+indirect+JMP+bug
-                val calculatedAddr = read(addr) or (read((addr and 0xFF00) or ((addr + 1) and 0x00FF)) shl 8)
+                val calculatedAddr = Address(
+                    read(Address(addr.value))
+                            or (read(Address((addr.value and 0xFF00) or ((addr.value + 1) and 0x00FF))) shl 8)
+                )
                 Operand(
-                    raw = addr,
+                    raw = addr.value,
                     addrFunction = { calculatedAddr }
                 )
             }
-            AddressingMode.INDEXED_INDIRECT -> fetch().let { addr ->
-                val baseAddr = (addr + register.x) and 0xFFFF
-                val calculatedAddr = read(baseAddr and 0xFF) + (read((baseAddr + 1) and 0xFF) shl 8)
+            AddressingMode.INDEXED_INDIRECT -> fetchAsAddress().let { addr ->
+                val baseAddr = addr.plus(register.x)
+                val calculatedAddr = Address(read(baseAddr.lsb) + (read(baseAddr.plus(1).lsb) shl 8))
                 Operand(
-                    raw = addr,
+                    raw = addr.value,
                     addrFunction = { calculatedAddr },
                     valueFunction = { read(calculatedAddr) }
                 )
             }
-            AddressingMode.INDIRECT_INDEXED -> fetch().let { addr ->
-                val calculatedAddr = (read(addr and 0xFF) + (read((addr + 1) and 0xFF) shl 8) + register.y) and 0xFFFF
+            AddressingMode.INDIRECT_INDEXED -> fetchAsAddress().let { addr ->
+                val calculatedAddr = Address((read(addr.lsb) + (read(addr.plus(1).lsb) shl 8) + register.y) and 0xFFFF)
                 Operand(
-                    raw = addr,
+                    raw = addr.value,
                     addrFunction = { calculatedAddr },
                     valueFunction = { read(calculatedAddr) }
                 )
@@ -144,15 +152,15 @@ class Cpu(
         return !areSameSigns(a, b)
     }
 
-    private fun read(addr: Int): Int {
+    private fun read(addr: Address): Int {
         return cpuBus.read(addr)
     }
 
-    private fun readWord(addr: Int): Int {
+    private fun readWord(addr: Address): Int {
         return cpuBus.readWord(addr)
     }
 
-    private fun write(addr: Int, value: Byte) {
+    private fun write(addr: Address, value: Byte) {
         return cpuBus.write(addr, value)
     }
 
@@ -260,7 +268,7 @@ class Cpu(
                 stack.push(register.status.toByte())
                 register.statusBreakMode = true
                 register.statusInterruptDisabled = true
-                register.pc = readWord(0xFFFE)
+                register.pc = readWord(Address(0xFFFE))
             }
             Instruction.BVC -> jumpRelativelyIf { !register.statusOverflow }
             Instruction.BVS -> jumpRelativelyIf { register.statusOverflow }
@@ -278,10 +286,10 @@ class Cpu(
             Instruction.INC -> updateMemory((operand.value + 1).toByte())
             Instruction.INX -> register.x++
             Instruction.INY -> register.y++
-            Instruction.JMP -> register.pc = operand.addr
+            Instruction.JMP -> register.pc = operand.addr.value
             Instruction.JSR -> {
                 stack.pushWord((register.pc - 1).toShort())
-                register.pc = operand.addr
+                register.pc = operand.addr.value
             }
             Instruction.LDA -> register.a = operand.value
             Instruction.LDX -> register.x = operand.value

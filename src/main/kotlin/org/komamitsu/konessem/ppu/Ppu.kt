@@ -2,6 +2,7 @@ package org.komamitsu.konessem.ppu
 
 import javafx.scene.image.WritableImage
 import javafx.scene.image.WritablePixelFormat
+import org.komamitsu.konessem.Address
 import org.komamitsu.konessem.Interrupt
 import org.komamitsu.konessem.rom.ChrRom
 import org.komamitsu.konessem.toUint
@@ -30,12 +31,12 @@ class Ppu(
         const val registerAddrOfPpuAddr = 0x0006
         const val registerAddrOfPpuData = 0x0007
 
-        const val addrOfPatternTable0 = 0x0000
-        const val addrOfPatternTable1 = 0x1000
-        const val addrOfNameTable = 0x2000
-        const val addrOfAttrTable = 0x23C0
-        const val addrOfBgPaletteTable = 0x3F00
-        const val addrOfSpritePaletteTable = 0x3F10
+        val addrOfPatternTable0 = Address(0x0000)
+        val addrOfPatternTable1 = Address(0x1000)
+        val addrOfNameTable = Address(0x2000)
+        val addrOfAttrTable = Address(0x23C0)
+        val addrOfBgPaletteTable = Address(0x3F00)
+        val addrOfSpritePaletteTable = Address(0x3F10)
 
         fun from(
             interrupt: Interrupt,
@@ -69,8 +70,8 @@ class Ppu(
         return WritableImage(Pixel.maxX * zoomRate, Pixel.maxY * zoomRate)
     }
 
-    fun read(addr: Int): Int {
-        val result = when (addr) {
+    fun read(addr: Address): Int {
+        val result = when (addr.value) {
             registerAddrOfReadStatus -> {
                 register.readByte.toUint().let { orig ->
                     // "cleared after reading $2002 and at dot 1 of the pre-render line"
@@ -86,14 +87,14 @@ class Ppu(
         return result
     }
 
-    fun write(addr: Int, value: Byte) {
-        when (addr) {
+    fun write(addr: Address, value: Byte) {
+        when (addr.value) {
             registerAddrOfWriteStatus0 -> register.writeByte0 = value.toUint()
             registerAddrOfWriteStatus1 -> register.writeByte1 = value.toUint()
-            registerAddrOfSpriteRamAddr -> spriteRam.addr(value)
+            registerAddrOfSpriteRamAddr -> spriteRam.addr(Address(value.toUint()))
             registerAddrOfSpriteRamData -> spriteRam.write(value)
             registerAddrOfScrollOffset -> scroll.write(value)
-            registerAddrOfPpuAddr -> ram.addr(value)
+            registerAddrOfPpuAddr -> ram.addr(Address(value.toUint()))
             registerAddrOfPpuData -> ram.write(value, register.ppuAddrIncrBytes)
             else -> throw IllegalArgumentException("Write operation isn't permitted at addr:$addr")
         }
@@ -107,8 +108,8 @@ class Ppu(
     private val screenBufferFormat = WritablePixelFormat.getIntArgbInstance()
 
     private fun buildPixels(
-        addrOfPatternTable: Int,
-        addrOfPaletteTable: Int,
+        addrOfPatternTable: Address,
+        addrOfPaletteTable: Address,
         spriteId: Int,
         paletteId: Int,
         position: Pixel,
@@ -159,13 +160,9 @@ class Ppu(
         }
     }
 
-    private fun addrOfNameTable(nametableId: Int): Int {
-        return addrOfNameTable + 0x400 * nametableId
-    }
+    private fun addrOfNameTable(nametableId: Int) = addrOfNameTable.plus(0x400 * nametableId)
 
-    private fun addrOfAttrTable(nametableId: Int): Int {
-        return addrOfAttrTable + 0x400 * nametableId
-    }
+    private fun addrOfAttrTable(nametableId: Int) = addrOfAttrTable.plus(0x400 * nametableId)
 
     private fun buildBgLine() {
         val baseY = tileY.toPixel()

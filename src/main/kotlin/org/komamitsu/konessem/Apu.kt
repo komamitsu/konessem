@@ -1,7 +1,7 @@
 package org.komamitsu.konessem
 
 class Apu {
-    fun read(addr: Int): Int {
+    fun read(addr: Address): Int {
         // FIXME
         return 0
     }

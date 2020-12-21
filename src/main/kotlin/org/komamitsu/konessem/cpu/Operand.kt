@@ -1,11 +1,13 @@
 package org.komamitsu.konessem.cpu
 
+import org.komamitsu.konessem.Address
+
 internal class Operand(
     private val raw: Int? = null,
-    private val addrFunction: (() -> Int)? = null,
+    private val addrFunction: (() -> Address)? = null,
     private val valueFunction: (() -> Int)? = null
 ) {
-    val addr : Int by lazy {
+    val addr : Address by lazy {
         val f = addrFunction
 
         if (f == null) {

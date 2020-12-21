@@ -1,12 +1,12 @@
 package org.komamitsu.konessem.cpu
 
-data class Opcode(
+internal data class Opcode(
     val instruction: Instruction,
     val addressingMode: AddressingMode,
     val cycle: Int
 ) {
     companion object {
-        val opcodeMap = mapOf(
+        private val opcodeMap = mapOf(
             0x69 to Opcode(Instruction.ADC, AddressingMode.IMMEDIATE, 2),
             0x65 to Opcode(Instruction.ADC, AddressingMode.ZERO_PAGE, 3),
             0x75 to Opcode(Instruction.ADC, AddressingMode.ZERO_PAGE_X, 4),
@@ -319,7 +319,7 @@ data class Opcode(
     }
 }
 
-enum class Instruction {
+internal enum class Instruction {
     ADC,    // add with carry
     AND,    // and (with accumulator)
     ASL,    // arithmetic shift left
@@ -395,7 +395,7 @@ enum class Instruction {
     IGN,    // Reads from memory at the specified address and ignores the value
 }
 
-enum class AddressingMode {
+internal enum class AddressingMode {
     IMPLICIT,
     ACCUMULATOR,
     IMMEDIATE,

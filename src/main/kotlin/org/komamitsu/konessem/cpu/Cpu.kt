@@ -1,51 +1,15 @@
 package org.komamitsu.konessem.cpu
 
-import mu.KotlinLogging
 import org.komamitsu.konessem.Interrupt
 import org.komamitsu.konessem.toUint
 import java.lang.RuntimeException
-
-private val logger = KotlinLogging.logger {}
 
 class Cpu(
     private val cpuBus: CpuBus,
     private val interrupt: Interrupt
 ) {
     internal val register = Register()
-    internal val stack = Stack()
-
-    companion object Cpu {
-//        val logwriter = Paths.get("/Users/komamitsu/tmp/konessem.log").toFile().outputStream().bufferedWriter()
-    }
-
-    inner class Stack {
-        private val baseAddr = 0x0100
-
-        internal fun push(value: Byte) {
-            val addr = register.sp + baseAddr
-            cpuBus.write(addr, value)
-            register.sp--
-        }
-
-        internal fun pushWord(value: Short) {
-            val v = value.toInt()
-            push((v shr 8 and 0xFF).toByte())
-            push((v and 0xFF).toByte())
-        }
-
-        internal fun pop(): Int {
-            ++register.sp
-            val addr = register.sp + baseAddr
-            val value = cpuBus.read(addr)
-            return value
-        }
-
-        internal fun popWord(): Int {
-            val lsb = pop()
-            val msb = pop()
-            return msb shl 8 or lsb
-        }
-    }
+    internal val stack = Stack(cpuBus = cpuBus, register = register)
 
     fun reset() {
         register.pc = cpuBus.readWord(0xFFFC)
@@ -78,7 +42,7 @@ class Cpu(
         return word
     }
 
-    fun fetchOperand(addressingMode: AddressingMode): Operand {
+    private fun fetchOperand(addressingMode: AddressingMode): Operand {
         return when (addressingMode) {
             AddressingMode.IMPLICIT -> Operand()
             AddressingMode.ACCUMULATOR -> Operand(
@@ -192,7 +156,7 @@ class Cpu(
         return cpuBus.write(addr, value)
     }
 
-    fun execOpcode(opcode: Opcode, operand: Operand) {
+    private fun execOpcode(opcode: Opcode, operand: Operand) {
         fun jumpRelativelyIf(cond: () -> Boolean) {
             if (cond()) {
                 // AddressingMode.RELATIVE has a calculated PC as a value
@@ -415,8 +379,6 @@ class Cpu(
         val code = fetch()
         val opcode = Opcode.find(code)
         val operand = fetchOperand(opcode.addressingMode)
-
-//        logwriter.append("register:$register, opcode:$opcode, operand:$operand\n")
 
         try {
             execOpcode(opcode, operand)

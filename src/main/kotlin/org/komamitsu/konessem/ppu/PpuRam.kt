@@ -2,7 +2,7 @@ package org.komamitsu.konessem.ppu
 
 import org.komamitsu.konessem.toUint
 
-internal class Ram(private val bytes: ByteArray) {
+internal class PpuRam(private val bytes: ByteArray) {
     private var addr: Int = 0
     private var settingHigherByteAddr = true
 

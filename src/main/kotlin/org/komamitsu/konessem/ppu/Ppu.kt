@@ -53,7 +53,7 @@ class Ppu(
     }
 
     private val spriteRam = SpriteRam()
-    private val ram = Ram(ramBytes)
+    private val ram = PpuRam(ramBytes)
     private val register = Register()
     private val colors = Colors()
 

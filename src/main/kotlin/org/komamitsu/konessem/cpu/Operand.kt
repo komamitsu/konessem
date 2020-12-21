@@ -1,6 +1,6 @@
 package org.komamitsu.konessem.cpu
 
-class Operand(
+internal class Operand(
     private val raw: Int? = null,
     private val addrFunction: (() -> Int)? = null,
     private val valueFunction: (() -> Int)? = null

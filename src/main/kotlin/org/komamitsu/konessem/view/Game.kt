@@ -18,6 +18,7 @@ import java.time.Instant
 import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
 
 private val logger = KotlinLogging.logger {}
 
@@ -27,6 +28,7 @@ class Game(romFile: Path): View() {
     private val ppu: Ppu
     private val cpu: Cpu
     private val keyPad = KeyPad()
+    private var running = AtomicBoolean(true)
 
     init {
         loader.load(romFile)
@@ -54,10 +56,10 @@ class Game(romFile: Path): View() {
         executorService = Executors.newSingleThreadScheduledExecutor()
     }
 
-    private fun calculateAndRender(): Image {
+    private fun calculateAndRender(): Image? {
         try {
             val start = Instant.now()
-            while (true) {
+            while (running.get()) {
                 val cycle = cpu.run()
                 val ready = ppu.run(cycle * 3)
                 if (ready) {
@@ -68,9 +70,10 @@ class Game(romFile: Path): View() {
         }
         catch (e: Throwable) {
             logger.error(e) { "Unexpected exception is thrown. cpu:$cpu, ppu:$ppu" }
-            // TODO
-            throw e
+            executorService.shutdown()
+            running.set(false)
         }
+        return null
     }
 
     override val root = vbox {
@@ -89,7 +92,12 @@ class Game(romFile: Path): View() {
         }
 
         executorService.scheduleWithFixedDelay(
-            { imageView.image = calculateAndRender() },
+            {
+                val image = calculateAndRender()
+                if (image != null) {
+                    imageView.image = image
+                }
+            },
             0,
             16000L,
             TimeUnit.MICROSECONDS

@@ -7,17 +7,30 @@ internal class PpuRam(private val bytes: ByteArray) {
     private var addr: Address = Address(0)
     private var settingHigherByteAddr = true
 
-    private fun adjustedAddr(addr: Address): Address {
+    // Addresses $3F04/$3F08/$3F0C can contain unique data, though these values are not used by the PPU when normally rendering
+    // (since the pattern values that would otherwise select those cells select the backdrop color instead).
+    // They can still be shown using the background palette hack, explained below.
+    //
+    // Addresses $3F10/$3F14/$3F18/$3F1C are mirrors of $3F00/$3F04/$3F08/$3F0C. Note that this goes for writing as well as reading.
+    // A symptom of not having implemented this correctly in an emulator is the sky being black in Super Mario Bros.,
+    // which writes the backdrop color through $3F10.
+    //
+    // https://wiki.nesdev.com/w/index.php/PPU_palettes#Memory_Map
+    private fun adjustedAddrForRead(addr: Address): Address {
         return when (addr.value) {
-            // Addresses $3F04/$3F08/$3F0C can contain unique data, though these values are not used by the PPU when normally rendering
-            // (since the pattern values that would otherwise select those cells select the backdrop color instead).
-            // They can still be shown using the background palette hack, explained below.
-            //
-            // Addresses $3F10/$3F14/$3F18/$3F1C are mirrors of $3F00/$3F04/$3F08/$3F0C. Note that this goes for writing as well as reading.
-            // A symptom of not having implemented this correctly in an emulator is the sky being black in Super Mario Bros.,
-            // which writes the backdrop color through $3F10.
-            //
-            // https://wiki.nesdev.com/w/index.php/PPU_palettes#Memory_Map
+            0x3F04 -> Address(0x3F00)
+            0x3F08 -> Address(0x3F00)
+            0x3F0C -> Address(0x3F00)
+            0x3F10 -> Address(0x3F00)
+            0x3F14 -> Address(0x3F04)
+            0x3F18 -> Address(0x3F08)
+            0x3F1C -> Address(0x3F0C)
+            else -> addr
+        }
+    }
+
+    private fun adjustedAddrForWrite(addr: Address): Address {
+        return when (addr.value) {
             0x3F10 -> Address(0x3F00)
             0x3F14 -> Address(0x3F04)
             0x3F18 -> Address(0x3F08)
@@ -40,7 +53,7 @@ internal class PpuRam(private val bytes: ByteArray) {
 
     private var bufferedValue = 0
     fun read(addrIncr: Int): Int {
-        val adjustedAddr = adjustedAddr(addr)
+        val adjustedAddr = adjustedAddrForRead(addr)
         if (adjustedAddr.value >= 0x3F00) {
             return bytes[adjustedAddr.value].toUint()
         }
@@ -52,7 +65,7 @@ internal class PpuRam(private val bytes: ByteArray) {
     }
 
     fun write(value: Byte, addrIncr: Int) {
-        val adjustedAddr = adjustedAddr(addr)
+        val adjustedAddr = adjustedAddrForWrite(addr)
         bytes[adjustedAddr.value] = value
         addr = addr.plus(addrIncr)
     }
@@ -66,7 +79,10 @@ internal class PpuRam(private val bytes: ByteArray) {
     fun paletteData(addrOfPaletteTable: Address, paletteId: Int): ByteArray {
         val startAddr = addrOfPaletteTable.plus(paletteId * 4)
         val endAddr = addrOfPaletteTable.plus((paletteId + 1) * 4)
-        return bytes.sliceArray(startAddr.value.until(endAddr.value))
+        // TODO Refactoring
+        return startAddr.value.until(endAddr.value).map {
+            bytes[adjustedAddrForRead(Address(it)).value]
+        }.toByteArray()
     }
 
     fun spriteId(addrOfNameTable: Address, tile: Tile): Int {

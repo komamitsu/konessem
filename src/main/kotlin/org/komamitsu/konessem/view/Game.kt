@@ -9,6 +9,7 @@ import org.komamitsu.konessem.KeyPad
 import org.komamitsu.konessem.cpu.Cpu
 import org.komamitsu.konessem.cpu.CpuBus
 import org.komamitsu.konessem.cpu.CpuRam
+import org.komamitsu.konessem.daemonizedThreadFactory
 import org.komamitsu.konessem.loader.Loader
 import org.komamitsu.konessem.ppu.Ppu
 import tornadofx.*
@@ -16,14 +17,13 @@ import java.nio.file.Path
 import java.time.Duration
 import java.time.Instant
 import java.util.concurrent.Executors
-import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 
 private val logger = KotlinLogging.logger {}
 
 class Game(romFile: Path): View() {
-    private var executorService: ScheduledExecutorService
+    private var executorService = Executors.newSingleThreadScheduledExecutor(daemonizedThreadFactory())
     private val loader = Loader()
     private val ppu: Ppu
     private val cpu: Cpu
@@ -52,8 +52,6 @@ class Game(romFile: Path): View() {
             interrupt = interrupt
         )
         cpu.reset()
-
-        executorService = Executors.newSingleThreadScheduledExecutor()
     }
 
     private fun calculateAndRender(): Image? {
@@ -99,7 +97,7 @@ class Game(romFile: Path): View() {
                 }
             },
             0,
-            16000L,
+            16600L,
             TimeUnit.MICROSECONDS
         )
     }

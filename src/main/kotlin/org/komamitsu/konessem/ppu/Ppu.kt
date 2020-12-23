@@ -1,12 +1,10 @@
 package org.komamitsu.konessem.ppu
 
 import javafx.scene.image.WritableImage
-import javafx.scene.image.WritablePixelFormat
 import org.komamitsu.konessem.Address
 import org.komamitsu.konessem.Interrupt
 import org.komamitsu.konessem.rom.ChrRom
 import org.komamitsu.konessem.toUint
-import java.nio.IntBuffer
 
 class Ppu(
     private val interrupt: Interrupt,
@@ -53,16 +51,16 @@ class Ppu(
         }
     }
 
+    val image = createImage()
+
     private val spriteRam = SpriteRam()
     private val ram = PpuRam(ramBytes)
     private val register = Register()
-    private val colors = Colors()
+    private val renderer = Renderer(ram, Colors(), image)
 
     private var cycle = 0
     private var line = Line(0)
     private var tileY = Tile.Unit(0)
-
-    val image = createImage()
 
     private val scroll = Scroll(register)
 
@@ -104,62 +102,6 @@ class Ppu(
         spriteRam.transfer(bytes)
     }
 
-    private val screenBuffer = IntBuffer.allocate(image.width.toInt() * image.height.toInt())
-    private val screenBufferFormat = WritablePixelFormat.getIntArgbInstance()
-
-    private fun buildPixels(
-        addrOfPatternTable: Address,
-        addrOfPaletteTable: Address,
-        spriteId: Int,
-        paletteId: Int,
-        position: Pixel,
-        transparentByDefault: Boolean,
-        reverseVertical: Boolean = false,
-        reverseHorizontal: Boolean = false
-    ) {
-        val spriteData = ram.spriteData(addrOfPatternTable, spriteId)
-        val paletteData = ram.paletteData(addrOfPaletteTable, paletteId)
-
-        for (bitY in 0.until(bitsInChar)) {
-            val byte0 = spriteData[bitY].toUint()
-            val byte1 = spriteData[bitY + bytesOfOneColorSprite].toUint()
-            for (bitX in 0.until(bitsInChar)) {
-                val patternValue = run {
-                    val bitInByte0 = if (byte0 and (0x80 shr bitX) != 0) 1 else 0
-                    val bitInByte1 = if (byte1 and (0x80 shr bitX) != 0) 1 else 0
-                    bitInByte0 + bitInByte1 * 2
-                }
-                if (transparentByDefault && patternValue == 0) {
-                    continue
-                }
-
-                val color: Int = run {
-                    val colorIdInPalette = paletteData[patternValue].toUint()
-                    colors.argb(colorIdInPalette)
-                }
-
-                val zoomedBase = position.zoomed()
-                val adjustedBitX = if (reverseHorizontal) { bitsInChar - bitX - 1 } else { bitX }
-                val adjustedBitY = if (reverseVertical) { bitsInChar - bitY - 1 } else { bitY }
-                for (zoomBitY in 0.until(zoomRate)) {
-                    val calculatedY = zoomedBase.y.incr((adjustedBitY * zoomRate) + zoomBitY)
-                    for (zoomBitX in 0.until(zoomRate)) {
-                        val calculatedX = zoomedBase.x.incr((adjustedBitX * zoomRate) + zoomBitX)
-                        if (calculatedX.validWidth(image) && calculatedY.validHeight(image)) {
-                            screenBufferFormat.setArgb(
-                                screenBuffer,
-                                calculatedX.value,
-                                calculatedY.value,
-                                image.width.toInt(),
-                                color
-                            )
-                        }
-                    }
-                }
-            }
-        }
-    }
-
     private fun addrOfNameTable(nametableId: Int) = addrOfNameTable.plus(0x400 * nametableId)
 
     private fun addrOfAttrTable(nametableId: Int) = addrOfAttrTable.plus(0x400 * nametableId)
@@ -186,7 +128,7 @@ class Ppu(
                 tile = normalizedTile
             ).paletteId(tile = normalizedTile)
 
-            buildPixels(
+            renderer.add(
                 addrOfPatternTable = if (register.bgPatternAddrMode) {
                     addrOfPatternTable1
                 }
@@ -211,7 +153,7 @@ class Ppu(
                 index = i
             ) ?: continue
             for (indexOfY in 0.until(sprite.heightOfSprite)) {
-                buildPixels(
+                renderer.add(
                     addrOfPatternTable = sprite.addrOfPatternTable,
                     addrOfPaletteTable = addrOfSpritePaletteTable,
                     spriteId = sprite.id + indexOfY,
@@ -226,10 +168,6 @@ class Ppu(
                 )
             }
         }
-    }
-
-    private fun buildScreen() {
-        image.pixelWriter.setPixels<IntBuffer>(0, 0, image.width.toInt(), image.height.toInt(), screenBufferFormat, screenBuffer, image.width.toInt())
     }
 
     private fun updateSpriteHit() {
@@ -270,7 +208,7 @@ class Ppu(
             if (register.spriteEnabled) {
                 buildSprites()
             }
-            buildScreen()
+            renderer.render()
             register.vblank = false
             register.spriteHit = false
             line = Line(0)

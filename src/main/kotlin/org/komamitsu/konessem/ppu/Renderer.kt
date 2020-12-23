@@ -9,8 +9,6 @@ import java.nio.IntBuffer
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.Executors
 
-internal typealias Layer = CopyOnWriteArrayList<Renderer.Item>
-
 internal class Renderer(
     private val ram: PpuRam,
     private val colors: Colors,
@@ -21,47 +19,51 @@ internal class Renderer(
 
     private val executor = Executors.newSingleThreadExecutor(daemonizedThreadFactory())
 
-    private val layers = Array<Layer>(3) { Layer() }
+    enum class Layer(val items: MutableList<Item>) {
+        BACKGROUND(CopyOnWriteArrayList()),
+        REMOTE_SPRITE(CopyOnWriteArrayList()),
+        CLOSE_SPRITE(CopyOnWriteArrayList())
+    }
 
-    class Item(
+    private class Item(
         val addrOfPatternTable: Address,
         val addrOfPaletteTable: Address,
         val spriteId: Int,
         val paletteId: Int,
         val position: Pixel,
-        val transparentByDefault: Boolean,
         val reverseVertical: Boolean,
         val reverseHorizontal: Boolean
     )
 
     fun add(
-        layerIndex: Int,
+        layer: Layer,
         addrOfPatternTable: Address,
         addrOfPaletteTable: Address,
         spriteId: Int,
         paletteId: Int,
         position: Pixel,
-        transparentByDefault: Boolean,
         reverseVertical: Boolean = false,
         reverseHorizontal: Boolean = false
     ) {
-        check(layerIndex in 0.until(layers.size))
-
-        layers[layerIndex].add(
+        layer.items.add(
             Item(
                 addrOfPatternTable = addrOfPatternTable,
                 addrOfPaletteTable = addrOfPaletteTable,
                 spriteId = spriteId,
                 paletteId = paletteId,
                 position = position,
-                transparentByDefault = transparentByDefault,
                 reverseVertical = reverseVertical,
                 reverseHorizontal = reverseHorizontal
             )
         )
     }
 
-    private fun renderItem(item: Item) {
+    private fun renderItem(
+        item: Item,
+        renderingRemoteBackground: Boolean = false,
+        renderingSprite: Boolean = false,
+        renderingCloseBackground: Boolean = false
+    ) {
         val spriteData = ram.spriteData(item.addrOfPatternTable, item.spriteId)
         val paletteData = ram.paletteData(item.addrOfPaletteTable, item.paletteId)
 
@@ -74,7 +76,16 @@ internal class Renderer(
                     val bitInByte1 = if (byte1 and (0x80 shr bitX) != 0) 1 else 0
                     bitInByte0 + bitInByte1 * 2
                 }
-                if (item.transparentByDefault && patternValue == 0) {
+                // When rendering remote background, do nothing if it's not the default color
+                if (renderingRemoteBackground && patternValue != 0) {
+                    continue
+                }
+                // When rendering sprites, do nothing if it's the default color
+                if (renderingSprite && patternValue == 0) {
+                    continue
+                }
+                // When rendering close background, do nothing if it's the default color
+                if (renderingCloseBackground && patternValue == 0) {
                     continue
                 }
 
@@ -115,14 +126,23 @@ internal class Renderer(
 
     fun render() {
         executor.execute {
-            for (layer in layers) {
-                for (item in layer) {
-                    renderItem(item)
-                }
-                layer.clear()
+            for (item in Layer.BACKGROUND.items) {
+                renderItem(item = item, renderingRemoteBackground = true)
             }
+            for (item in Layer.REMOTE_SPRITE.items) {
+                renderItem(item = item, renderingSprite = true)
+            }
+            for (item in Layer.BACKGROUND.items) {
+                renderItem(item = item, renderingCloseBackground = true)
+            }
+            for (item in Layer.CLOSE_SPRITE.items) {
+                renderItem(item = item, renderingSprite = true)
+            }
+            Layer.values().forEach { it.items.clear() }
 
-            image.pixelWriter.setPixels<IntBuffer>(0, 0, image.width.toInt(), image.height.toInt(), screenBufferFormat, screenBuffer, image.width.toInt())
+            image.pixelWriter.setPixels<IntBuffer>(0, 0,
+                image.width.toInt(), image.height.toInt(),
+                screenBufferFormat, screenBuffer, image.width.toInt())
         }
     }
 }

@@ -129,6 +129,7 @@ class Ppu(
             ).paletteId(tile = normalizedTile)
 
             renderer.add(
+                layerIndex = 1,
                 addrOfPatternTable = if (register.bgPatternAddrMode) {
                     addrOfPatternTable1
                 }
@@ -154,6 +155,7 @@ class Ppu(
             ) ?: continue
             for (indexOfY in 0.until(sprite.heightOfSprite)) {
                 renderer.add(
+                    layerIndex = if (sprite.prioritizedBg) 0 else 2,
                     addrOfPatternTable = sprite.addrOfPatternTable,
                     addrOfPaletteTable = addrOfSpritePaletteTable,
                     spriteId = sprite.id + indexOfY,

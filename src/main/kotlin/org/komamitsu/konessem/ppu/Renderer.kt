@@ -9,6 +9,8 @@ import java.nio.IntBuffer
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.Executors
 
+internal typealias Layer = CopyOnWriteArrayList<Renderer.Item>
+
 internal class Renderer(
     private val ram: PpuRam,
     private val colors: Colors,
@@ -19,7 +21,7 @@ internal class Renderer(
 
     private val executor = Executors.newSingleThreadExecutor(daemonizedThreadFactory())
 
-    private val items = CopyOnWriteArrayList<Item>()
+    private val layers = Array<Layer>(3) { Layer() }
 
     class Item(
         val addrOfPatternTable: Address,
@@ -33,6 +35,7 @@ internal class Renderer(
     )
 
     fun add(
+        layerIndex: Int,
         addrOfPatternTable: Address,
         addrOfPaletteTable: Address,
         spriteId: Int,
@@ -42,15 +45,19 @@ internal class Renderer(
         reverseVertical: Boolean = false,
         reverseHorizontal: Boolean = false
     ) {
-        items += Item(
-            addrOfPatternTable = addrOfPatternTable,
-            addrOfPaletteTable = addrOfPaletteTable,
-            spriteId = spriteId,
-            paletteId = paletteId,
-            position = position,
-            transparentByDefault = transparentByDefault,
-            reverseVertical = reverseVertical,
-            reverseHorizontal = reverseHorizontal
+        check(layerIndex in 0.until(layers.size))
+
+        layers[layerIndex].add(
+            Item(
+                addrOfPatternTable = addrOfPatternTable,
+                addrOfPaletteTable = addrOfPaletteTable,
+                spriteId = spriteId,
+                paletteId = paletteId,
+                position = position,
+                transparentByDefault = transparentByDefault,
+                reverseVertical = reverseVertical,
+                reverseHorizontal = reverseHorizontal
+            )
         )
     }
 
@@ -108,10 +115,12 @@ internal class Renderer(
 
     fun render() {
         executor.execute {
-            for (item in items) {
-                renderItem(item)
+            for (layer in layers) {
+                for (item in layer) {
+                    renderItem(item)
+                }
+                layer.clear()
             }
-            items.clear()
 
             image.pixelWriter.setPixels<IntBuffer>(0, 0, image.width.toInt(), image.height.toInt(), screenBufferFormat, screenBuffer, image.width.toInt())
         }

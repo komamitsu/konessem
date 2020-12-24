@@ -34,7 +34,6 @@ class Game(romFile: Path): View() {
         loader.load(romFile)
 
         val interrupt = Interrupt()
-        val cpuRam = CpuRam()
 
         ppu = Ppu.from(
             interrupt = interrupt,
@@ -46,7 +45,7 @@ class Game(romFile: Path): View() {
             cpuBus = CpuBus(
                 ppu = ppu,
                 prgRom = loader.prgRom,
-                cpuRam = cpuRam,
+                cpuRam = CpuRam(),
                 keyPad = keyPad
             ),
             interrupt = interrupt

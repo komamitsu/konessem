@@ -204,6 +204,12 @@ class Ppu(
             tileY = tileY.incr(1)
         }
         else if (line.vblankTiming()) {
+            // Iterate once more for scroll
+            if (register.bgEnabled) {
+                buildBgLine()
+                updateSpriteHit()
+            }
+
             register.vblank = true
             if (register.interruptOnVBlank) {
                 interrupt.nmi = true

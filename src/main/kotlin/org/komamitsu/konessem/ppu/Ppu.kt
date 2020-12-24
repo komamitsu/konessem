@@ -111,7 +111,8 @@ class Ppu(
         val absoluteY = scroll.absoluteY(baseY)
         val displayY = scroll.displayY(baseY)
 
-        for (tileXIndex in 0.until(Tile.maxX)) {
+        // Iterate Tile.maxX + 1 times for scroll
+        for (tileXIndex in 0.until(Tile.maxX + 1)) {
             val baseX = Tile.Unit(tileXIndex).toPixel()
             val absoluteX = scroll.absoluteX(baseX)
             val displayX = scroll.displayX(baseX)

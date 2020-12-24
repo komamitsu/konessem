@@ -106,6 +106,17 @@ class Ppu(
 
     private fun addrOfAttrTable(nametableId: Int) = addrOfAttrTable.plus(0x400 * nametableId)
 
+    private fun nametableId(absolute: Pixel): Int {
+        // Take care of nametable mirroring (See `What is that "Mirroring" flag?` on http://fms.komkon.org/iNES/iNES.html#LABL)
+        val horizontalAndVerticalPositions = if (nametableMirroringVertical) {
+            Pair((absolute.x.value / Pixel.maxX) % 2, 0)
+        }
+        else {
+            Pair(0, (absolute.y.value / Pixel.maxY) % 2)
+        }
+        return horizontalAndVerticalPositions.first + horizontalAndVerticalPositions.second * 2
+    }
+
     private fun buildBgLine() {
         val baseY = tileY.toPixel()
         val absoluteY = scroll.absoluteY(baseY)
@@ -117,7 +128,7 @@ class Ppu(
             val absoluteX = scroll.absoluteX(baseX)
             val displayX = scroll.displayX(baseX)
 
-            val nameTableId = ((absoluteX.value / Pixel.maxX) % 2) + ((absoluteY.value / Pixel.maxY) % 2) * 2
+            val nameTableId = nametableId(Pixel(absoluteX, absoluteY))
             val normalizedTile = Tile(
                 x = Tile.Unit.fromPixel(Pixel.Unit(absoluteX.value % Pixel.maxX)),
                 y = Tile.Unit.fromPixel(Pixel.Unit(absoluteY.value % Pixel.maxY))

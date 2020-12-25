@@ -86,7 +86,7 @@ class KeyPad {
 
     fun read(): Int {
         val iter = capturedEventIter ?: return 0
-        return if (iter.next()) {
+        return if (iter.hasNext() && iter.next()) {
             1
         }
         else {

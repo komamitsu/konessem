@@ -23,6 +23,15 @@ data class INesHeader(
     val prgRamNotPresentAfter0x6xxx: Boolean,
     val tvSystemExt: Int
 ) {
+    init {
+        if (sizeOfChrRomIn8KbUnit > 1) {
+            throw IllegalArgumentException("CHR ROM larger than 0x2000 isn't supported")
+        }
+        if (otherExternalMemory) {
+            throw IllegalArgumentException("Other non-volatile memory isn't supported")
+        }
+    }
+
     companion object {
         fun from(bytes: ByteArray): INesHeader {
 
@@ -66,13 +75,10 @@ data class INesHeader(
     }
 }
 
-class PrgRam(private val bytes: ByteArray)
-
 class Loader {
     lateinit var iNesHeader: INesHeader
     lateinit var prgRom: PrgRom
     lateinit var chrRom: ChrRom
-    lateinit var prgRam: PrgRam
 
     fun load(path: Path) {
         Files.newInputStream(path).use { input ->
@@ -88,7 +94,6 @@ class Loader {
                 input.read(it)
                 ChrRom(it)
             }
-            prgRam = PrgRam(ByteArray(iNesHeader.prgRamSize * 8 * 1024))
         }
     }
 }

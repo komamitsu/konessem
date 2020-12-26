@@ -15,9 +15,6 @@ class PrgRom(private val bytes: ByteArray) {
 
 class ChrRom(private val bytes: ByteArray) {
     fun copyInto(dest: ByteArray) {
-        bytes.copyInto(
-            destination = dest,
-            endIndex = min(bytes.size, dest.size)
-        )
+        bytes.copyInto(dest)
     }
 }

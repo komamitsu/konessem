@@ -2,6 +2,7 @@ package org.komamitsu.konessem.rom
 
 import org.komamitsu.konessem.Address
 import org.komamitsu.konessem.toUint
+import kotlin.math.min
 
 class PrgRom(private val bytes: ByteArray) {
     val size: Int
@@ -14,6 +15,9 @@ class PrgRom(private val bytes: ByteArray) {
 
 class ChrRom(private val bytes: ByteArray) {
     fun copyInto(dest: ByteArray) {
-        bytes.copyInto(dest)
+        bytes.copyInto(
+            destination = dest,
+            endIndex = min(bytes.size, dest.size)
+        )
     }
 }

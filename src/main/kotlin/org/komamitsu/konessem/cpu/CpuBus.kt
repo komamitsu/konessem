@@ -27,8 +27,7 @@ class CpuBus(
             in 0x4020.until(0x6000) -> throw IllegalStateException("Extended ROM isn't supported")
             in 0x6000.until(0x8000) -> { /* Need to take care of extended RAM access? */ 0 }
             in 0x8000.until(0xC000) -> prgRom.read(addr.minus(0x8000))
-            in 0xC000.until(0x10000) -> prgRom.read(addr.minus(if (prgRom.size <= 0x4000) 0xC000 else 0x8000))
-            else -> throw IllegalArgumentException("Invalid address: 0x%X".format(addr))
+            else -> prgRom.read(addr.minus(if (prgRom.size <= 0x4000) 0xC000 else 0x8000))
         }
     }
 

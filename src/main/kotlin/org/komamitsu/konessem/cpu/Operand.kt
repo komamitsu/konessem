@@ -35,7 +35,7 @@ internal class Operand(
 
     override fun toString(): String {
         val addr = addrFunction.let {
-            if (it == null) "null" else "0x%04X".format(addr.value)
+            if (it == null) "null" else addr.toString()
         }
         val raw = raw.let {
             if (it == null) "null" else "0x%04X".format(it)

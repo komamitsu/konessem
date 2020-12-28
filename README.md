@@ -4,7 +4,12 @@ NES emulator written in Kotlin from scratch.
 ## Demo
 
 - [Falling](https://github.com/vblank182/falling-nes)
+
+<img src="https://user-images.githubusercontent.com/59043/103191859-dfa3dc00-4919-11eb-86bf-d68afd4afc8b.gif" alt="falling.gif" width="320"/>
+
 - [TkShoot](http://hp.vector.co.jp/authors/VA042397/nes/sample.html)
+
+<img src="https://user-images.githubusercontent.com/59043/103191876-f21e1580-4919-11eb-8c54-9de815c3bdde.gif" alt="tkshoot.gif" width="320"/>
 
 I believe you can play Super Mario Bros on Konessem :)
 

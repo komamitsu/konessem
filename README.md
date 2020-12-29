@@ -40,3 +40,4 @@ I believe you can play Super Mario Bros on Konessem :)
 - Other non-volatile memory
 - Large CHR ROM (> 8KB)
 - 2nd keypad
+- [Unofficial opcodes](https://wiki.nesdev.com/w/index.php/Programming_with_unofficial_opcodes) (Added some codes, but I don't think they correctly work)
